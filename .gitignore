@@ -1,0 +1,4 @@
+*.env
+.vscode
+cert.pem
+key.pem
