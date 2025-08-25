@@ -26,8 +26,17 @@ func main() {
 	srv := new(server.Server)
 
 	// Launching an HTTPS server with configuration from environment variables
-	// Using HOST and HOST_PORT from config.env
-	if err := srv.Run(os.Getenv("HOST"), os.Getenv("HOST_PORT"), handlers.InitRoutes()); err != nil {
-		logrus.Fatalf("error occurred while running http server: %s", err.Error())
+	// Using HOST and HOST_PORT from config.env and checking that the variables are not empty
+	host := os.Getenv("HOST")
+	port := os.Getenv("HOST_PORT")
+	if host != "" || port != "" {
+
+		if err := srv.Run(host, port, handlers.InitRoutes()); err != nil {
+			logrus.Fatalf("error occurred while running http server: %s", err.Error())
+		}
+
+	} else {
+		logrus.Fatal("HOST or HOST_PORT environment variables are not set")
 	}
+
 }
