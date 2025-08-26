@@ -35,10 +35,10 @@ func main() {
 
 	// Initializing the connection to Redis
 	rdb, err := redis.NewRedisDB(redis.Config{
-		Addr:     os.Getenv("REDIS_INITDB_HOST"),
-		Port:     os.Getenv("REDIS_INITDB_PORT"),
-		Password: os.Getenv("REDIS_INITDB_ROOT_PASSWORD"),
-		DB:       os.Getenv("REDIS_INITDB_DB"),
+		Addr:     os.Getenv("REDIS_HOST"),
+		Port:     os.Getenv("REDIS_PORT"),
+		Password: os.Getenv("REDIS_PASSWORD"),
+		DB:       os.Getenv("REDIS_DB"),
 	})
 	if err != nil {
 		logrus.Fatalf("failed to initialize redis: %s", err.Error())
