@@ -1,22 +1,29 @@
 package redis
 
 import (
+	"context"
+	"time"
+
 	"github.com/redis/go-redis/v9"
 )
 
+// Authorization interface defines cache operations for authentication
+type Authorization interface {
+	Get(ctx context.Context, key string, dest interface{}) error
+	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
+	Delete(ctx context.Context, keys ...string) error
+}
+
 // CacheRepository provides caching operations using Redis
-// Will contain methods for getting/setting cached data
+// Implements the Authorization interface
 type CacheRepository struct {
-	// TODO: Add Redis client as a field
-	// client *redis.Client
+	Authorization
 }
 
 // NewCacheRepository creates a new Redis cache repository instance
-// Accepts Redis client but doesn't store it yet
+// Initializes the Authorization interface implementation
 func NewCacheRepository(client *redis.Client) *CacheRepository {
-	return &CacheRepository{}
-	// TODO: Store Redis client for future use
-	// return &CacheRepository{
-	//     client: client,
-	// }
+	return &CacheRepository{
+		Authorization: NewRedisRepository(client),
+	}
 }
