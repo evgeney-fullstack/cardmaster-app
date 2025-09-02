@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"net/http"
+
+	"github.com/evgeney-fullstack/cardmaster-app/internal/app/models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -8,7 +11,25 @@ import (
 // Expected payload: {email, password, username}
 // Returns: HTTP status 201 on success, error response on failure
 func (h *Handler) signUp(c *gin.Context) {
+	var input models.User
 
+	// Bind JSON request body to User model
+	if err := c.BindJSON(&input); err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Create user using authorization service
+	err := h.services.Authorization.CreateUser(input)
+	if err != nil {
+		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Return success response
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"SignUp": "successful",
+	})
 }
 
 // signIn handles user authentication
