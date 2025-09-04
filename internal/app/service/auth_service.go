@@ -3,10 +3,12 @@ package service
 import (
 	"crypto/sha1"
 	"fmt"
+	"time"
 
 	"github.com/evgeney-fullstack/cardmaster-app/internal/app/models"
 	"github.com/evgeney-fullstack/cardmaster-app/internal/app/repository/mongodb"
 	"github.com/evgeney-fullstack/cardmaster-app/internal/app/repository/redis"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -30,8 +32,15 @@ func NewAuthService(repos mongodb.Authorization, cacheRepo redis.Authorization) 
 
 // CreateUser creates a new user with hashed password
 func (s *AuthService) CreateUser(user models.User) error {
+	// Generate unique ID for the user
+	user.Id = primitive.NewObjectID()
+
 	// Hash password before storing
 	user.PasswordHash = generatePasswordHash(user.PasswordHash)
+
+	// Set creation and update timestamps
+	user.CreatedAt = time.Now()
+	user.UpdatedAt = time.Now()
 
 	// Delegate to repository for database operation
 	return s.repos.CreateUser(user)
