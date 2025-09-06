@@ -1,25 +1,27 @@
 package mongodb
 
 import (
+	"github.com/evgeney-fullstack/cardmaster-app/internal/app/models"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// Authorization interface defines user authentication methods
+type Authorization interface {
+	CreateUser(user models.User) error
+	GetUser(email, username, password string) (models.User, error)
+	SaveRefreshTokenToDB(token models.RefreshToken) error
+}
+
 // Repository provides data access methods for MongoDB
-// Will contain collection-specific methods for CRUD operations
+// Implements the Authorization interface
 type Repository struct {
-	// TODO: Add MongoDB collections as fields
-	// usersCollection *mongo.Collection
-	// postsCollection *mongo.Collection
+	Authorization
 }
 
 // NewRepository creates a new MongoDB repository instance
-// Accepts MongoDB client but doesn't initialize collections yet
+// Initializes the Authorization interface implementation
 func NewRepository(mdb *mongo.Client) *Repository {
-	return &Repository{}
-	// TODO: Initialize collections from the database
-	// db := mdb.Database("your_database_name")
-	// return &Repository{
-	//     usersCollection: db.Collection("users"),
-	//     postsCollection: db.Collection("posts"),
-	// }
+	return &Repository{
+		Authorization: NewAuthRepository(mdb),
+	}
 }

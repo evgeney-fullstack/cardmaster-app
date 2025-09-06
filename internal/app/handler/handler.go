@@ -24,6 +24,15 @@ func NewHandler(services *service.Service) *Handler {
 func (h *Handler) InitRoutes() *gin.Engine {
 
 	router := gin.New()
+	// Auth group handles all authentication-related endpoints
+	auth := router.Group("/auth")
+	{
+		auth.POST("/sign-up", h.signUp)              // User registration
+		auth.POST("/sign-in", h.signIn)              // User login
+		auth.POST("/refresh-token", h.refreshTokens) // Token refresh
+		auth.POST("/logout", h.logout)               // Single device logout
+		auth.POST("/logout-all", h.logoutAll)        // All devices logout
+	}
 
 	return router
 }
