@@ -20,11 +20,13 @@ type Config struct {
 }
 
 const (
-	dbName         = "cardmasterDB" // Database name
-	userCollection = "users"        // User collection name
+	dbName                 = "cardmasterDB" // Database name
+	userCollection         = "users"        // User collection name
+	refreshTokenCollection = "refresh_tokens"
 )
 
-var userCol *mongo.Collection // Global user collection reference
+var userCol *mongo.Collection         // Global user collection reference
+var refreshTokenCol *mongo.Collection // Global refreshTokenCol collection reference
 
 // NewMongoDB establishes connection to MongoDB database
 // Uses context with timeout for connection attempt
@@ -63,6 +65,7 @@ func NewMongoDB(cfg Config) (*mongo.Client, error) {
 // initCollections initializes all database collections
 func initCollections(mdb *mongo.Client) {
 	userCol = mdb.Database(dbName).Collection(userCollection)
+	refreshTokenCol = mdb.Database(dbName).Collection(refreshTokenCollection)
 }
 
 // initIndexModels creates database indexes for optimal query performance

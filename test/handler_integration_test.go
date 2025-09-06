@@ -40,7 +40,7 @@ func setupTestContainers(ctx context.Context) (mongodb.Config, redis.Config, fun
 			"MONGO_INITDB_ROOT_USERNAME": "testuser",
 			"MONGO_INITDB_ROOT_PASSWORD": "testpass",
 		},
-		WaitingFor: wait.ForLog("Waiting for connections").WithStartupTimeout(30 * time.Second),
+		WaitingFor: wait.ForLog("Waiting for connections").WithStartupTimeout(3 * time.Second),
 	}
 
 	mongoContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -175,9 +175,9 @@ func TestSignUpIntegration(t *testing.T) {
 		{
 			name: "Successful registration",
 			payload: map[string]interface{}{
-				"email":         "test@new.com",
-				"password_hash": "password123",
-				"username":      "test_user",
+				"email":    "test@new.com",
+				"password": "password123",
+				"username": "test_user",
 			},
 			expectedStatus: http.StatusOK,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -187,9 +187,9 @@ func TestSignUpIntegration(t *testing.T) {
 		{
 			name: "Error - the email already exists",
 			payload: map[string]interface{}{
-				"email":         "test@new.com",
-				"password_hash": "password123",
-				"username":      "anotheruser",
+				"email":    "test@new.com",
+				"password": "password123",
+				"username": "anotheruser",
 			},
 			expectedStatus: http.StatusInternalServerError,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -199,8 +199,8 @@ func TestSignUpIntegration(t *testing.T) {
 		{
 			name: "Error - incorrect data",
 			payload: map[string]interface{}{
-				"email":         "invalid-email", // Invalid email format
-				"password_hash": "short",         // The password is too short
+				"email":    "invalid-email", // Invalid email format
+				"password": "short",         // The password is too short
 			},
 			expectedStatus: http.StatusBadRequest,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -228,5 +228,160 @@ func TestSignUpIntegration(t *testing.T) {
 				tt.checkResponse(t, recorder)
 			}
 		})
+	}
+}
+
+// TestSignInIntegration is testing the endpoint of user registration
+func TestSignInIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration tests in short mode")
+	}
+
+	ctx := context.Background()
+
+	// Setting up test containers
+	mongoCfg, redisCfg, cleanup, err := setupTestContainers(ctx)
+	defer cleanup()
+
+	if err != nil {
+		t.Fatalf("Failed to set up test containers: %v", err)
+	}
+
+	// Test Server Setup
+	router, err := setupTestServer(mongoCfg, redisCfg)
+	if err != nil {
+		t.Fatalf("The test server could not be configured: %v", err)
+	}
+
+	tests := []struct {
+		name           string
+		payload        interface{}
+		expectedStatus int
+		checkResponse  func(t *testing.T, recorder *httptest.ResponseRecorder)
+	}{
+		{
+			name: "Successful registration",
+			payload: map[string]interface{}{
+				"email":    "test@new.com",
+				"password": "password123",
+				"username": "test_user",
+			},
+			expectedStatus: http.StatusOK,
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				assert.Contains(t, recorder.Body.String(), "successful")
+			},
+		},
+		{
+			name: "Successful enter with username",
+			payload: map[string]interface{}{
+				"username": "test_user",
+				"password": "password123",
+			},
+			expectedStatus: http.StatusOK,
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				assert.Contains(t, recorder.Body.String(), "test_user")
+			},
+		},
+		{
+			name: "Successful enter with email",
+			payload: map[string]interface{}{
+				"email":    "test@new.com",
+				"password": "password123",
+			},
+			expectedStatus: http.StatusOK,
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				assert.Contains(t, recorder.Body.String(), "test_user")
+			},
+		},
+		{
+			name: "Error - incorrect data",
+			payload: map[string]interface{}{
+				"email":    "invalid-email",
+				"password": "password123",
+			},
+			expectedStatus: http.StatusBadRequest,
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				assert.Contains(t, recorder.Body.String(), "invalid email format")
+			},
+		},
+		{
+			name: "Error - email is empty",
+			payload: map[string]interface{}{
+				"email":    "",
+				"password": "password123",
+			},
+			expectedStatus: http.StatusBadRequest,
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				assert.Contains(t, recorder.Body.String(), "error")
+			},
+		},
+		{
+			name: "Error - username is empty",
+			payload: map[string]interface{}{
+				"username": "",
+				"password": "password123",
+			},
+			expectedStatus: http.StatusBadRequest,
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				assert.Contains(t, recorder.Body.String(), "error")
+			},
+		},
+		{
+			name: "Error - password is empty",
+			payload: map[string]interface{}{
+				"username": "test_user",
+				"password": "",
+			},
+			expectedStatus: http.StatusBadRequest,
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				assert.Contains(t, recorder.Body.String(), "error")
+			},
+		},
+	}
+
+	var signUpOK bool = true
+
+	for _, tt := range tests {
+
+		if signUpOK {
+			t.Run(tt.name, func(t *testing.T) {
+				// Request preparation
+				body, _ := json.Marshal(tt.payload)
+				req, _ := http.NewRequest("POST", "/auth/sign-up", bytes.NewBuffer(body))
+				req.Header.Set("Content-Type", "application/json")
+
+				// Request execution
+				recorder := httptest.NewRecorder()
+				router.ServeHTTP(recorder, req)
+
+				// Checking the response status
+				assert.Equal(t, tt.expectedStatus, recorder.Code)
+
+				// Checking the response body
+				if tt.checkResponse != nil {
+					tt.checkResponse(t, recorder)
+				}
+			})
+			signUpOK = false
+		} else {
+			t.Run(tt.name, func(t *testing.T) {
+				// Request preparation
+				body, _ := json.Marshal(tt.payload)
+				req, _ := http.NewRequest("POST", "/auth/sign-in", bytes.NewBuffer(body))
+				req.Header.Set("Content-Type", "application/json")
+
+				// Request execution
+				recorder := httptest.NewRecorder()
+				router.ServeHTTP(recorder, req)
+
+				// Checking the response status
+				assert.Equal(t, tt.expectedStatus, recorder.Code)
+
+				// Checking the response body
+				if tt.checkResponse != nil {
+					tt.checkResponse(t, recorder)
+				}
+			})
+		}
 	}
 }

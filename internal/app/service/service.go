@@ -9,6 +9,7 @@ import (
 // Authorization interface defines authentication service methods
 type Authorization interface {
 	CreateUser(user models.User) error
+	AuthenticateUser(input models.SignInRequest) (map[string]interface{}, error)
 }
 
 // Service represents the business logic layer of the application

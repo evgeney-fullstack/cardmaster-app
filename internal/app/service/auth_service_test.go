@@ -22,6 +22,18 @@ func (m *MockMongoAuthRepository) CreateUser(user models.User) error {
 	return args.Error(0)
 }
 
+func (m *MockMongoAuthRepository) GetUser(email, username, password string) (models.User, error) {
+
+	args := m.Called(email, username, password)
+	return args.Get(0).(models.User), args.Error(1)
+}
+
+func (m *MockMongoAuthRepository) SaveRefreshTokenToDB(token models.RefreshToken) error {
+
+	args := m.Called(token)
+	return args.Error(0)
+}
+
 // MockRedisAuthRepository is a mock implementation of redis.Authorization
 type MockRedisAuthRepository struct {
 	mock.Mock
@@ -62,9 +74,9 @@ func TestAuthService_CreateUser(t *testing.T) {
 		{
 			name: "Success - User created successfully",
 			inputUser: models.User{
-				Email:        "test@example.com",
-				PasswordHash: "password123",
-				Username:     "testuser",
+				Email:    "test@example.com",
+				Password: "password123",
+				Username: "testuser",
 			},
 			mockSetup: func() {
 				// Expect CreateUser to be called with any user and return no error
@@ -75,9 +87,9 @@ func TestAuthService_CreateUser(t *testing.T) {
 		{
 			name: "Error - MongoDB repository returns error",
 			inputUser: models.User{
-				Email:        "test@example.com",
-				PasswordHash: "password123",
-				Username:     "testuser",
+				Email:    "test@example.com",
+				Password: "password123",
+				Username: "testuser",
 			},
 			mockSetup: func() {
 				// Expect CreateUser to be called and return an error
@@ -103,8 +115,8 @@ func TestAuthService_CreateUser(t *testing.T) {
 				assert.NoError(t, err)
 
 				// Verify that password was hashed
-				assert.NotEqual(t, generatePasswordHash(tt.inputUser.PasswordHash), "password123")
-				assert.Contains(t, generatePasswordHash(tt.inputUser.PasswordHash), fmt.Sprintf("%x", "ljknsdfkgiovmsdlk&984kjsdlfj"))
+				assert.NotEqual(t, generatePasswordHash(tt.inputUser.Password), "password123")
+				assert.Contains(t, generatePasswordHash(tt.inputUser.Password), fmt.Sprintf("%x", "ljknsdfkgiovmsdlk&984kjsdlfj"))
 			}
 
 			// Verify that all expectations were met

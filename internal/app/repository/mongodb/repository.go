@@ -8,6 +8,8 @@ import (
 // Authorization interface defines user authentication methods
 type Authorization interface {
 	CreateUser(user models.User) error
+	GetUser(email, username, password string) (models.User, error)
+	SaveRefreshTokenToDB(token models.RefreshToken) error
 }
 
 // Repository provides data access methods for MongoDB

@@ -2,6 +2,8 @@ package handler
 
 import (
 	"net/http"
+	"net/mail"
+	"strings"
 
 	"github.com/evgeney-fullstack/cardmaster-app/internal/app/models"
 	"github.com/gin-gonic/gin"
@@ -32,11 +34,54 @@ func (h *Handler) signUp(c *gin.Context) {
 	})
 }
 
-// signIn handles user authentication
-// Expected payload: {email, password}
-// Returns: access token, refresh token, and user info on success
-func (h *Handler) signIn(c *gin.Context) {
+func isValidEmail(email string) bool {
+	// Проверка длины
+	if len(email) > 254 {
+		return false
+	}
 
+	// Парсинг email с помощью стандартной библиотеки
+	addr, err := mail.ParseAddress(email)
+	if err != nil {
+		return false
+	}
+
+	// Дополнительная проверка чтобы избежать неоднозначностей
+	return addr.Address == email && !strings.Contains(email, " ")
+}
+
+// signIn handles user authentication
+// Validates input credentials and returns JWT tokens on successful authentication
+func (h *Handler) signIn(c *gin.Context) {
+	var input models.SignInRequest
+
+	// Bind and validate JSON input
+	if err := c.BindJSON(&input); err != nil {
+		newErrorResponse(c, http.StatusBadRequest, "error:invalid request format")
+		return
+	}
+
+	// Validate that either email or username is provided
+	if strings.TrimSpace(input.Email) == "" && strings.TrimSpace(input.Username) == "" {
+		newErrorResponse(c, http.StatusBadRequest, "error:email or username is required")
+		return
+	}
+
+	// Validate email format if provided
+	if input.Email != "" && !isValidEmail(input.Email) {
+		newErrorResponse(c, http.StatusBadRequest, "error:invalid email format")
+		return
+	}
+
+	// Authenticate user and generate tokens
+	authResult, err := h.services.Authorization.AuthenticateUser(input)
+	if err != nil {
+		newErrorResponse(c, http.StatusUnauthorized, "error:invalid credentials")
+		return
+	}
+
+	// Return authentication response
+	c.JSON(http.StatusOK, authResult)
 }
 
 // refreshHandler handles token refresh requests
